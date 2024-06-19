@@ -2,11 +2,53 @@ from netmiko import ConnectHandler
 from log import authLog
 
 import traceback
+import re
 
-shIntStatusHalf = "show interface status | include half"
+shIntStatus = "show interface status | include connected"
 shHostname = "show run | i hostname"
+interface = ''
 
-def showHalfInts(validIPs, username, netDevice):
+intList = []
+
+intPatt = r'[a-zA-Z]+\d+\/(?:\d+\/)*\d+'
+discardPatt = r'(ip address \d+\.\d+\.\d+\.\d+)|(no switchport)|(switchport mode (?!access))|(switchport access vlan 1001)|(switchport access vlan 1101)|(switchport access vlan 1103)|(shutdown)|(vrf forward)'
+
+intConfig = [
+    f'int {interface}',
+    ''
+]
+
+dot1xConfig = [
+    'aaa authorization network default group ISE_SERVERS', 
+    'aaa accounting auth-proxy default start-stop group ISE_SERVERS',
+    'aaa accounting dot1x default start-stop group ISE_SERVERS',
+    'aaa accounting update newinfo periodic 600',
+    'aaa server radius dynamic-author',
+    'client 30.128.33.197 server-key 7 045A05120772410F1A4A',
+    'client 10.155.133.65 server-key 7 050A081B291F43480A56',
+    'radius server ISE-Server-MO',
+    'address ipv4 10.155.133.65 auth-port 1812 acct-port 1813',
+    'automate-tester username radius-test',
+    'key 7 094D401D11561A53185F',
+    'radius server ISE-Server-VA',
+    'address ipv4 30.128.33.197 auth-port 1812 acct-port 1813',
+    'automate-tester username radius-test',
+    'key 7 094D401D11561A53185F',
+    'radius-server attribute 6 on-for-login-auth', 
+    'radius-server attribute 8 include-in-access-req',
+    'radius-server attribute 25 access-request include',
+    'radius-server attribute 31 mac format ietf upper-case',
+    'radius-server attribute 31 send nas-port-detail mac-only',
+    'radius-server dead-criteria time 5 tries 2',
+    'radius-server deadtime 10',
+    'aaa group server radius ISE_SERVERS',
+    'server name ISE-Server-VA',
+    'server name ISE-Server-MO',
+    'ip radius source-interface Loopback0',
+    'do write'
+]
+
+def dot1x(validIPs, username, netDevice):
     # This function is to take a show run
     
     for validDeviceIP in validIPs:
@@ -34,21 +76,46 @@ def showHalfInts(validIPs, username, netDevice):
                 shHostnameOut = shHostnameOut.strip()
                 shHostnameOut = shHostnameOut + "#"
 
-                print(f"INFO: Taking a \"{shIntStatusHalf}\" for device: {validDeviceIP}")
-                shIntStatusHalfOut = sshAccess.send_command(shIntStatusHalf)
-                authLog.info(f"Automation successfully ran the command: {shIntStatusHalf}")
-                if "half" in shIntStatusHalfOut:
-                    print(f"INFO: The word \"half\" was found on the output for device: {validDeviceIP}")
-                    authLog.info(f"The word \"half\" was found on the output for device: {validDeviceIP}")
-                    authLog.info(f"{shHostnameOut}{shIntStatusHalf}\n{shIntStatusHalfOut}")
-                    with open(f"Outputs/{validDeviceIP}_Output.txt", "a") as file:
+                print(f"INFO: Taking a \"{shIntStatus}\" for device: {validDeviceIP}")
+                shIntStatusOut = sshAccess.send_command(shIntStatus)
+                authLog.info(f"Automation successfully ran the command: {shIntStatus}")
+                shIntStatusOut = re.findall(intPatt, shIntStatusOut)
+                authLog.info(f"The following interfaces were found under the command: {shIntStatus}\n{shIntStatusOut}")
+                if shIntStatusOut:
+                    for interface in shIntStatusOut:
+                        interface = interface.strip()
+                        print(f"INFO: Checking configuration for interface {interface} on device {validDeviceIP}")
+                        authLog.info(f"Checking configuration for interface {interface} on device {validDeviceIP}")
+                        interfaceOut = sshAccess.send_command(f'show run int {interface}')
+
+                        if discardPatt in interfaceOut:
+                            authLog.info(f"Interface {interface} was discarded on device: {validDeviceIP}.")
+                        else:
+                            authLog.info(f"Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
+                            print(f"INFO: Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
+                            intList.append(interface)
+                        
+                for interfaceMod in intList:
+                    intConfig[0] = f'int {interfaceMod}'
+                    intConfigOut = sshAccess.send_config_set(intConfig)
+
+                try:
+                    print(f"INFO: Adding Dot1x Config to device: {validDeviceIP}")
+                    dot1xConfigOut = sshAccess.send_config_set(dot1xConfig)
+                    print(f"INFO: Successfully added Dot1x config to device: {validDeviceIP}")
+                    authLog.info(f"Successfully added Dot1x config to device: {validDeviceIP}")
+
+                    with open(f"Outputs/{validDeviceIP}_Dot1x.txt", "a") as file:
                         file.write(f"User {username} connected to device IP {validDeviceIP}\n\n")
-                        file.write(f"{shHostnameOut}{shIntStatusHalf}\n{shIntStatusHalfOut}")
-                else:
-                    authLog.info(f"Device {validDeviceIP} is running at full duplex/full speed")
+                        file.write(f"{shHostnameOut}\n{dot1xConfigOut}")
+
+                except Exception as error:
+                    print(f"ERROR: An error occurred: {error}\n", traceback.format_exc())
+                    authLog.error(f"User {username} connected to {validDeviceIP} got an error: {error}")
+                    authLog.debug(traceback.format_exc(),"\n")
 
         except Exception as error:
-            print(f"An error occurred: {error}\n", traceback.format_exc())
+            print(f"ERROR: An error occurred: {error}\n", traceback.format_exc())
             authLog.error(f"User {username} connected to {validDeviceIP} got an error: {error}")
             authLog.debug(traceback.format_exc(),"\n")
             with open(f"failedDevices.txt","a") as failedDevices:

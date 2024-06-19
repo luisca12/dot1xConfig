@@ -9,7 +9,7 @@ def main():
     greetingString()
     from auth import Auth
     from functions import checkIsDigit
-    from commandsCLI import showHalfInts
+    from commandsCLI import dot1x
     from log import authLog
     
     validIPs, username, netDevice = Auth()
@@ -20,7 +20,7 @@ def main():
         if checkIsDigit(selection):
             if selection == "1":
                 # This option will take a show run
-                showHalfInts(validIPs, username, netDevice)
+                dot1x(validIPs, username, netDevice)
             if selection == "2":
                 authLog.info(f"User {username} disconnected from the devices {validIPs}")
                 authLog.info(f"User {username} logged out from the program.")

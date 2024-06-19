@@ -1,11 +1,10 @@
 import os
-from commandsCLI import shIntStatusHalf
 
 def greetingString():
         os.system("CLS")
-        print('  ------------------------------------------------- ')
-        print(f"    Welcome to the automated {shIntStatusHalf} program ")
-        print('  ------------------------------------------------- ')
+        print('  ------------------------------------------------------ ')
+        print(f"  Welcome to the automated dot1x configuration program ")
+        print('  ------------------------------------------------------ ')
 
 def menuString(deviceIP, username):
         os.system("CLS")
@@ -14,8 +13,7 @@ def menuString(deviceIP, username):
         print('\t\tMenu - Please choose an option')
         print('\t\t  Only numbers are accepted')
         print('  -------------------------------------------------------------- ')
-        print('  >\t\t1. To run the following commands:\t       <')
-        print(f'\t\t\t{shIntStatusHalf}    \n')      
+        print('  >\t\t1. To configure dot1x:\t       \n<')   
         print('  >\t\t\t2. Exit the program\t\t       <')
         print('  -------------------------------------------------------------- \n')
 
