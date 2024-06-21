@@ -4,18 +4,54 @@ from log import authLog
 import traceback
 import re
 
-shIntStatus = "show interface status | include connected"
+shIntStatus = "show interface status"
 shHostname = "show run | i hostname"
 interface = ''
 
 intList = []
+intHostsOut = []
 
 intPatt = r'[a-zA-Z]+\d+\/(?:\d+\/)*\d+'
 discardPatt = r'(ip address \d+\.\d+\.\d+\.\d+)|(no switchport)|(switchport mode (?!access))|(switchport access vlan 1001)|(switchport access vlan 1101)|(switchport access vlan 1103)|(shutdown)|(vrf forward)'
 
-intConfig = [
+intConfigAP = [
     f'int {interface}',
-    ''
+    'authentication event fail action next-method',
+    'authentication event server dead action authorize voice',
+    'authentication event server alive action reinitialize ',
+    'authentication host-mode multi-host',
+    'authentication open',
+    'authentication order dot1x mab',
+    'authentication priority dot1x mab',
+    'authentication port-control auto',
+    'authentication periodic',
+    'authentication timer reauthenticate server',
+    'authentication timer inactivity server',
+    'authentication violation restrict',
+    'mab',
+    'dot1x pae authenticator',
+    'dot1x timeout tx-period 10',
+    'ip access-group ACL-DEFAULT in'
+]
+
+intConfigHosts = [
+    f'int {interface}',
+    'authentication event fail action next-method',
+    'authentication event server dead action authorize voice',
+    'authentication event server alive action reinitialize ',
+    'authentication host-mode multi-auth',
+    'authentication open',
+    'authentication order dot1x mab',
+    'authentication priority dot1x mab',
+    'authentication port-control auto',
+    'authentication periodic',
+    'authentication timer reauthenticate server',
+    'authentication timer inactivity server',
+    'authentication violation restrict',
+    'mab',
+    'dot1x pae authenticator',
+    'dot1x timeout tx-period 10',
+    'ip access-group ACL-DEFAULT in'
 ]
 
 dot1xConfig = [
@@ -94,10 +130,23 @@ def dot1x(validIPs, username, netDevice):
                             authLog.info(f"Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
                             print(f"INFO: Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
                             intList.append(interface)
-                        
-                for interfaceMod in intList:
-                    intConfig[0] = f'int {interfaceMod}'
-                    intConfigOut = sshAccess.send_config_set(intConfig)
+                
+                for intAP in intList:
+                    intAPOut = sshAccess.send_command(f'show run int {intAP}')
+                    if "2256" in intAPOut:
+                        intConfigAP[0] = f'int {intAP}'
+                        intConfigAPOut = sshAccess.send_config_set(intConfigAP)
+                    else:
+                        intConfigHosts[0] = f'int {intAP}'
+                        intConfigHostsOut = sshAccess.send_config_set(intConfigHosts)
+                        intHostsOut.append(intAP)
+                
+                showAccessVlanOut = sshAccess.send_command(f'show run int {intHostsOut[0]} | include switchport access vlan')
+                showAccessVlanOut = showAccessVlanOut.replace('switchport access vlan', '')
+                showAccessVlanOut = showAccessVlanOut.strip()
+
+                for int in intList:
+                    authVlanOut = sshAccess.send_command(f'authentication event server dead action authorize vlan {showAccessVlanOut}')
 
                 try:
                     print(f"INFO: Adding Dot1x Config to device: {validDeviceIP}")
