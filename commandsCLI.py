@@ -12,7 +12,7 @@ intList = []
 intHostsOut = []
 
 intPatt = r'[a-zA-Z]+\d+\/(?:\d+\/)*\d+'
-discardPatt = r'(ip address \d+\.\d+\.\d+\.\d+)|(no switchport)|(switchport mode (?!access))|(switchport access vlan 1001)|(switchport access vlan 1101)|(switchport access vlan 1103)|(shutdown)|(vrf forward)'
+discardPatt = re.compile('(ip address \d+\.\d+\.\d+\.\d+)|(no switchport)|(switchport mode (?!access))|(switchport access vlan (1001|1101|1103))|(shutdown)|(vrf forward)')
 
 intConfigAP = [
     f'int {interface}',
@@ -123,12 +123,21 @@ def dot1x(validIPs, username, netDevice):
                         print(f"INFO: Checking configuration for interface {interface} on device {validDeviceIP}")
                         authLog.info(f"Checking configuration for interface {interface} on device {validDeviceIP}")
                         interfaceOut = sshAccess.send_command(f'show run int {interface}')
-
-                        if discardPatt in interfaceOut:
+                        interfaceOut = interfaceOut.split('\n')
+                        discardInt = False
+        
+                        for line in interfaceOut:
+                            if discardPatt.search(line):
+                                authLog.info(f"Discarding interface {interface} due to line: {line}")
+                                discardInt = True
+                                break
+                        
+                        if discardInt:
+                            print(f"INFO: Interface {interface} discarded.")
                             authLog.info(f"Interface {interface} was discarded on device: {validDeviceIP}.")
                         else:
-                            authLog.info(f"Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
                             print(f"INFO: Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
+                            authLog.info(f"Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
                             intList.append(interface)
                 
                 for intAP in intList:
@@ -145,7 +154,8 @@ def dot1x(validIPs, username, netDevice):
                 showAccessVlanOut = showAccessVlanOut.replace('switchport access vlan', '')
                 showAccessVlanOut = showAccessVlanOut.strip()
 
-                for int in intList:
+                for interfaceList in intList:
+                    interfaceListOut = sshAccess.send_config_set(f'interface {interfaceList}')
                     authVlanOut = sshAccess.send_command(f'authentication event server dead action authorize vlan {showAccessVlanOut}')
 
                 try:
