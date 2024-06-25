@@ -3,6 +3,7 @@ from log import authLog
 
 import traceback
 import re
+import os
 
 shIntStatus = "show interface status"
 shHostname = "show run | i hostname"
@@ -12,7 +13,7 @@ intList = []
 intHostsOut = []
 
 intPatt = r'[a-zA-Z]+\d+\/(?:\d+\/)*\d+'
-discardPatt = re.compile('(ip address \d+\.\d+\.\d+\.\d+)|(no switchport)|(switchport mode (?!access))|(switchport access vlan (1001|1101|1103))|(shutdown)|(vrf forward)')
+discardPatt = re.compile(r'(ip address \d+\.\d+\.\d+\.\d+)|(no switchport)|(switchport mode (?!access))|(switchport access vlan (1001|1101|1103))|(shutdown)|(vrf forward)')
 
 intConfigAP = [
     f'int {interface}',
@@ -112,6 +113,21 @@ def dot1x(validIPs, username, netDevice):
                 shHostnameOut = shHostnameOut.strip()
                 shHostnameOut = shHostnameOut + "#"
 
+                try:
+                    print(f"INFO: Adding Dot1x Config to device: {validDeviceIP}")
+                    dot1xConfigOut = sshAccess.send_config_set(dot1xConfig)
+                    print(f"INFO: Successfully added Dot1x config to device: {validDeviceIP}")
+                    authLog.info(f"Successfully added Dot1x config to device: {validDeviceIP}")
+
+                    with open(f"Outputs/{validDeviceIP}_Dot1x.txt", "a") as file:
+                        file.write(f"User {username} connected to device IP {validDeviceIP}\n\n")
+                        file.write(f"{shHostnameOut}\n{dot1xConfigOut}")
+
+                except Exception as error:
+                    print(f"ERROR: An error occurred: {error}\n", traceback.format_exc())
+                    authLog.error(f"User {username} connected to {validDeviceIP} got an error: {error}")
+                    authLog.debug(traceback.format_exc(),"\n")
+
                 print(f"INFO: Taking a \"{shIntStatus}\" for device: {validDeviceIP}")
                 shIntStatusOut = sshAccess.send_command(shIntStatus)
                 authLog.info(f"Automation successfully ran the command: {shIntStatus}")
@@ -139,7 +155,7 @@ def dot1x(validIPs, username, netDevice):
                             print(f"INFO: Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
                             authLog.info(f"Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
                             intList.append(interface)
-                
+
                 for intAP in intList:
                     intAPOut = sshAccess.send_command(f'show run int {intAP}')
                     if "2256" in intAPOut:
@@ -153,25 +169,15 @@ def dot1x(validIPs, username, netDevice):
                 showAccessVlanOut = sshAccess.send_command(f'show run int {intHostsOut[0]} | include switchport access vlan')
                 showAccessVlanOut = showAccessVlanOut.replace('switchport access vlan', '')
                 showAccessVlanOut = showAccessVlanOut.strip()
+                
+                authVlan = [
+                    f'int {interface}',
+                    f'authentication event server dead action authorize vlan {showAccessVlanOut}'
+                ]
 
                 for interfaceList in intList:
-                    interfaceListOut = sshAccess.send_config_set(f'interface {interfaceList}')
-                    authVlanOut = sshAccess.send_command(f'authentication event server dead action authorize vlan {showAccessVlanOut}')
-
-                try:
-                    print(f"INFO: Adding Dot1x Config to device: {validDeviceIP}")
-                    dot1xConfigOut = sshAccess.send_config_set(dot1xConfig)
-                    print(f"INFO: Successfully added Dot1x config to device: {validDeviceIP}")
-                    authLog.info(f"Successfully added Dot1x config to device: {validDeviceIP}")
-
-                    with open(f"Outputs/{validDeviceIP}_Dot1x.txt", "a") as file:
-                        file.write(f"User {username} connected to device IP {validDeviceIP}\n\n")
-                        file.write(f"{shHostnameOut}\n{dot1xConfigOut}")
-
-                except Exception as error:
-                    print(f"ERROR: An error occurred: {error}\n", traceback.format_exc())
-                    authLog.error(f"User {username} connected to {validDeviceIP} got an error: {error}")
-                    authLog.debug(traceback.format_exc(),"\n")
+                    authVlan[0] = f'int {interfaceList}'
+                    authVlanOut = sshAccess.send_config_set(authVlan)
 
         except Exception as error:
             print(f"ERROR: An error occurred: {error}\n", traceback.format_exc())

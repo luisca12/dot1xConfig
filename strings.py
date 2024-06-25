@@ -13,7 +13,7 @@ def menuString(deviceIP, username):
         print('\t\tMenu - Please choose an option')
         print('\t\t  Only numbers are accepted')
         print('  -------------------------------------------------------------- ')
-        print('  >\t\t1. To configure dot1x:\t       \n<')   
+        print('  >\t\t1. To configure dot1x:\t\t       <\n')   
         print('  >\t\t\t2. Exit the program\t\t       <')
         print('  -------------------------------------------------------------- \n')
 
