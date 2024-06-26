@@ -11,6 +11,10 @@ interface = ''
 
 intList = []
 intHostsOut = []
+intConfigAPList = []
+intConfigHostsList = []
+intConfigAPstr = ""
+intConfigHostsstr = ""
 
 intPatt = r'[a-zA-Z]+\d+\/(?:\d+\/)*\d+'
 discardPatt = re.compile(r'(ip address \d+\.\d+\.\d+\.\d+)|(no switchport)|(switchport mode (?!access))|(switchport access vlan (1001|1101|1103))|(shutdown)|(vrf forward)')
@@ -87,7 +91,7 @@ dot1xConfig = [
 
 def dot1x(validIPs, username, netDevice):
     # This function is to take a show run
-    
+
     for validDeviceIP in validIPs:
         try:
             validDeviceIP = validDeviceIP.strip()
@@ -118,67 +122,91 @@ def dot1x(validIPs, username, netDevice):
                     dot1xConfigOut = sshAccess.send_config_set(dot1xConfig)
                     print(f"INFO: Successfully added Dot1x config to device: {validDeviceIP}")
                     authLog.info(f"Successfully added Dot1x config to device: {validDeviceIP}")
+                
+                    print(f"INFO: Taking a \"{shIntStatus}\" for device: {validDeviceIP}")
+                    shIntStatusOut = sshAccess.send_command(shIntStatus)
+                    authLog.info(f"Automation successfully ran the command: {shIntStatus}")
+                    shIntStatusOut = re.findall(intPatt, shIntStatusOut)
+                    authLog.info(f"The following interfaces were found under the command: {shIntStatus}\n{shIntStatusOut}")
+                    if shIntStatusOut:
+                        for interface in shIntStatusOut:
+                            interface = interface.strip()
+                            print(f"INFO: Checking configuration for interface {interface} on device {validDeviceIP}")
+                            authLog.info(f"Checking configuration for interface {interface} on device {validDeviceIP}")
+                            interfaceOut = sshAccess.send_command(f'show run int {interface}')
+                            interfaceOut = interfaceOut.split('\n')
+                            discardInt = False
+            
+                            for line in interfaceOut:
+                                if discardPatt.search(line):
+                                    authLog.info(f"Discarding interface {interface} due to line: {line}")
+                                    discardInt = True
+                                    break
+                            
+                            if discardInt:
+                                print(f"INFO: Interface {interface} discarded.")
+                                authLog.info(f"Interface {interface} was discarded on device: {validDeviceIP}.")
+                            else:
+                                print(f"INFO: Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
+                                authLog.info(f"Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
+                                intList.append(interface)
+
+                    for intAP in intList:
+                        intAPOut = sshAccess.send_command(f'show run int {intAP}')
+                        if "2256" in intAPOut:
+                            print(f"INFO: Configuring interface {intAP} with Dot1x - Access Point")
+                            authLog.info(f"String 2256 was found under \"show run int {intAP}\"")
+                            intConfigAP[0] = f'int {intAP}'
+                            intConfigAPOut = sshAccess.send_config_set(intConfigAP)
+                            authLog.info(f"Applied the below configuration to interface {intAP} on device {validDeviceIP}\n{intConfigAPOut}")
+                            intConfigAPList.append(intConfigAPOut)
+                        else:
+                            print(f"INFO: Configuring interface {intAP} with Dot1x - Access Port")
+                            authLog.info(f"String 2256 was NOT found under \"show run int {intAP}\"")
+                            intConfigHosts[0] = f'int {intAP}'
+                            intConfigHostsOut = sshAccess.send_config_set(intConfigHosts)
+                            authLog.info(f"Applied the below configuration to interface {intAP} on device {validDeviceIP}\n{intConfigHostsOut}")
+                            intConfigHostsList.append(intConfigHostsOut)
+                            intHostsOut.append(intAP)
+                    
+
+
+                    showAccessVlanOut = sshAccess.send_command(f'show run int {intHostsOut[0]} | include switchport access vlan')
+                    authLog.info(f"Automation ran the command \"show run int {intHostsOut[0]} | include switchport access vlan\"")
+                    showAccessVlanOut = showAccessVlanOut.replace('switchport access vlan', '')
+                    showAccessVlanOut = showAccessVlanOut.strip()
+                    authLog.info(f"Found the following data VLAN: {showAccessVlanOut} on device {validDeviceIP}")
+                    print(f"INFO: Found the following data VLAN: {showAccessVlanOut} on device {validDeviceIP}")
+
+                    authVlan = [
+                        f'int {interface}',
+                        f'authentication event server dead action authorize vlan {showAccessVlanOut}'
+                    ]
+
+                    for interfaceList in intList:
+                        authVlan[0] = f'int {interfaceList}'
+                        authVlanOut = sshAccess.send_config_set(authVlan)
+                        authLog.info(f"Successfully configured the interface {interfaceList} on device {validDeviceIP} with the below command:\n"
+                                    f"{authVlanOut}")
+                        print(f"INFO: Confiogured {interfaceList} on device {validDeviceIP} with the below command:\n{authVlanOut}")
+                    
+                    intConfigAPstr = " ".join(intConfigAPList)
+                    intConfigHostsstr = " ".join(intConfigHostsList)
+
+                    intConfigAPstr.split('\n')
+                    intConfigHostsstr.split('\n')
 
                     with open(f"Outputs/{validDeviceIP}_Dot1x.txt", "a") as file:
-                        file.write(f"User {username} connected to device IP {validDeviceIP}\n\n")
-                        file.write(f"{shHostnameOut}\n{dot1xConfigOut}")
+                        file.write(f"User {username} connected to device IP {validDeviceIP}, configuration applied:\n\n")
+                        file.write(f"{shHostnameOut}\n{dot1xConfigOut}\n")
+                        file.write(f"{shHostnameOut}\n{intConfigAPstr}\n")
+                        file.write(f"{shHostnameOut}\n{intConfigHostsstr}")
 
                 except Exception as error:
                     print(f"ERROR: An error occurred: {error}\n", traceback.format_exc())
                     authLog.error(f"User {username} connected to {validDeviceIP} got an error: {error}")
                     authLog.debug(traceback.format_exc(),"\n")
-
-                print(f"INFO: Taking a \"{shIntStatus}\" for device: {validDeviceIP}")
-                shIntStatusOut = sshAccess.send_command(shIntStatus)
-                authLog.info(f"Automation successfully ran the command: {shIntStatus}")
-                shIntStatusOut = re.findall(intPatt, shIntStatusOut)
-                authLog.info(f"The following interfaces were found under the command: {shIntStatus}\n{shIntStatusOut}")
-                if shIntStatusOut:
-                    for interface in shIntStatusOut:
-                        interface = interface.strip()
-                        print(f"INFO: Checking configuration for interface {interface} on device {validDeviceIP}")
-                        authLog.info(f"Checking configuration for interface {interface} on device {validDeviceIP}")
-                        interfaceOut = sshAccess.send_command(f'show run int {interface}')
-                        interfaceOut = interfaceOut.split('\n')
-                        discardInt = False
-        
-                        for line in interfaceOut:
-                            if discardPatt.search(line):
-                                authLog.info(f"Discarding interface {interface} due to line: {line}")
-                                discardInt = True
-                                break
-                        
-                        if discardInt:
-                            print(f"INFO: Interface {interface} discarded.")
-                            authLog.info(f"Interface {interface} was discarded on device: {validDeviceIP}.")
-                        else:
-                            print(f"INFO: Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
-                            authLog.info(f"Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
-                            intList.append(interface)
-
-                for intAP in intList:
-                    intAPOut = sshAccess.send_command(f'show run int {intAP}')
-                    if "2256" in intAPOut:
-                        intConfigAP[0] = f'int {intAP}'
-                        intConfigAPOut = sshAccess.send_config_set(intConfigAP)
-                    else:
-                        intConfigHosts[0] = f'int {intAP}'
-                        intConfigHostsOut = sshAccess.send_config_set(intConfigHosts)
-                        intHostsOut.append(intAP)
-                
-                showAccessVlanOut = sshAccess.send_command(f'show run int {intHostsOut[0]} | include switchport access vlan')
-                showAccessVlanOut = showAccessVlanOut.replace('switchport access vlan', '')
-                showAccessVlanOut = showAccessVlanOut.strip()
-                
-                authVlan = [
-                    f'int {interface}',
-                    f'authentication event server dead action authorize vlan {showAccessVlanOut}'
-                ]
-
-                for interfaceList in intList:
-                    authVlan[0] = f'int {interfaceList}'
-                    authVlanOut = sshAccess.send_config_set(authVlan)
-
+       
         except Exception as error:
             print(f"ERROR: An error occurred: {error}\n", traceback.format_exc())
             authLog.error(f"User {username} connected to {validDeviceIP} got an error: {error}")
@@ -187,5 +215,5 @@ def dot1x(validIPs, username, netDevice):
                 failedDevices.write(f"User {username} connected to {validDeviceIP} got an error.\n")
         
         finally:
-            print("Outputs and files successfully created.\n")
-            print("For any erros or logs please check authLog.txt\n")
+            print(f"Outputs and files successfully created for device {validDeviceIP}.\n")
+            print("For any erros or logs please check Logs -> authLog.txt\n")
