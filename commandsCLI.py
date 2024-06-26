@@ -60,6 +60,8 @@ intConfigHosts = [
 ]
 
 dot1xConfig = [
+    'ip access-list extended ACL-DEFAULT',
+    'permit ip any any',
     'aaa authorization network default group ISE_SERVERS', 
     'aaa accounting auth-proxy default start-stop group ISE_SERVERS',
     'aaa accounting dot1x default start-stop group ISE_SERVERS',
@@ -85,8 +87,7 @@ dot1xConfig = [
     'aaa group server radius ISE_SERVERS',
     'server name ISE-Server-VA',
     'server name ISE-Server-MO',
-    'ip radius source-interface Loopback0',
-    'do write'
+    'ip radius source-interface Loopback0'
 ]
 
 def dot1x(validIPs, username, netDevice):
@@ -190,6 +191,11 @@ def dot1x(validIPs, username, netDevice):
                                     f"{authVlanOut}")
                         print(f"INFO: Confiogured {interfaceList} on device {validDeviceIP} with the below command:\n{authVlanOut}")
                     
+                    
+                    writeMemOut = sshAccess.send_command('write')
+                    print(f"INFO: Running configuration saved for device {validDeviceIP}")
+                    authLog.info(f"Running configuration saved for device {validDeviceIP}\n{shHostnameOut}'write'\n{writeMemOut}")
+
                     intConfigAPstr = " ".join(intConfigAPList)
                     intConfigHostsstr = " ".join(intConfigHostsList)
 
