@@ -13,8 +13,10 @@ intList = []
 intHostsOut = []
 intConfigAPList = []
 intConfigHostsList = []
+authVlanList = []
 intConfigAPstr = ""
 intConfigHostsstr = ""
+
 
 intPatt = r'[a-zA-Z]+\d+\/(?:\d+\/)*\d+'
 discardPatt = re.compile(r'(ip address \d+\.\d+\.\d+\.\d+)|(no switchport)|(switchport mode (?!access))|(switchport access vlan (1001|1101|1103))|(shutdown)|(vrf forward)')
@@ -169,8 +171,6 @@ def dot1x(validIPs, username, netDevice):
                             authLog.info(f"Applied the below configuration to interface {intAP} on device {validDeviceIP}\n{intConfigHostsOut}")
                             intConfigHostsList.append(intConfigHostsOut)
                             intHostsOut.append(intAP)
-                    
-
 
                     showAccessVlanOut = sshAccess.send_command(f'show run int {intHostsOut[0]} | include switchport access vlan')
                     authLog.info(f"Automation ran the command \"show run int {intHostsOut[0]} | include switchport access vlan\"")
@@ -181,7 +181,8 @@ def dot1x(validIPs, username, netDevice):
 
                     authVlan = [
                         f'int {interface}',
-                        f'authentication event server dead action authorize vlan {showAccessVlanOut}'
+                        f'authentication event server dead action authorize vlan {showAccessVlanOut}',
+                        f''
                     ]
 
                     for interfaceList in intList:
@@ -190,7 +191,7 @@ def dot1x(validIPs, username, netDevice):
                         authLog.info(f"Successfully configured the interface {interfaceList} on device {validDeviceIP} with the below command:\n"
                                     f"{authVlanOut}")
                         print(f"INFO: Confiogured {interfaceList} on device {validDeviceIP} with the below command:\n{authVlanOut}")
-                    
+                        authVlanList.append(authVlanOut)
                     
                     writeMemOut = sshAccess.send_command('write')
                     print(f"INFO: Running configuration saved for device {validDeviceIP}")
@@ -198,15 +199,21 @@ def dot1x(validIPs, username, netDevice):
 
                     intConfigAPstr = " ".join(intConfigAPList)
                     intConfigHostsstr = " ".join(intConfigHostsList)
+                    authVlanstr = " ".join(authVlanList)
 
                     intConfigAPstr.split('\n')
                     intConfigHostsstr.split('\n')
+                    authVlanstr.split('\n')
 
                     with open(f"Outputs/{validDeviceIP}_Dot1x.txt", "a") as file:
                         file.write(f"User {username} connected to device IP {validDeviceIP}, configuration applied:\n\n")
                         file.write(f"{shHostnameOut}\n{dot1xConfigOut}\n")
+                        file.write(f"\nBelow is the config applied to all ports with Access Points:\n")
                         file.write(f"{shHostnameOut}\n{intConfigAPstr}\n")
-                        file.write(f"{shHostnameOut}\n{intConfigHostsstr}")
+                        file.write(f"\nBelow is the config applied to all ports with Hosts connected:\n")
+                        file.write(f"{shHostnameOut}\n{intConfigHostsstr}\n")
+                        file.write(f"\nBelow is the config applied to all ports:\n")
+                        file.write(f"{shHostnameOut}\n{authVlanstr}")
 
                 except Exception as error:
                     print(f"ERROR: An error occurred: {error}\n", traceback.format_exc())
