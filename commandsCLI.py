@@ -89,7 +89,41 @@ dot1xConfig = [
     'aaa group server radius ISE_SERVERS',
     'server name ISE-Server-VA',
     'server name ISE-Server-MO',
-    'ip radius source-interface Loopback0'
+    'ip radius source-interface Loopback0',
+    'device-sensor filter-list lldp list lldp-list',
+    'tlv name system-name',
+    'tlv name system-description',
+    'device-sensor filter-list dhcp list dhcp-list',
+    'option name host-name',
+    'option name domain-name',
+    'option name requested-address',
+    'option name parameter-request-list',
+    'option name class-identifier',
+    'option name client-identifier',
+    'device-sensor filter-list cdp list cdp-list',
+    'tlv name device-name',
+    'tlv name address-type',
+    'tlv name capabilities-type',
+    'tlv name platform-type',
+    'tlv name native-vlan-type',
+    'tlv number 34',
+    'device-sensor filter-spec dhcp include list dhcp-list',
+    'device-sensor filter-spec lldp include list lldp-list',
+    'device-sensor filter-spec cdp include list cdp-list',
+    'device-sensor accounting',
+    'device-sensor notify all-changes',
+    'device-tracking tracking auto-source',
+    'device-tracking policy DEVTRK',
+    'security-level glean',
+    'tracking enable',
+    'no protocol ndp',
+    'no protocol dhcp6',
+    'no protocol udp',
+    'device-tracking policy DT_TRUNK',
+    'trusted-port',
+    'device-role switch',
+    'no protocol udp',
+    'dot1x system-auth-control'
 ]
 
 def dot1x(validIPs, username, netDevice):
@@ -182,7 +216,7 @@ def dot1x(validIPs, username, netDevice):
                     authVlan = [
                         f'int {interface}',
                         f'authentication event server dead action authorize vlan {showAccessVlanOut}',
-                        f''
+                        f'device-tracking attach-policy DEVTRK'
                     ]
 
                     for interfaceList in intList:
