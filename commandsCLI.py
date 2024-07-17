@@ -169,7 +169,7 @@ def dot1x(validIPs, username, netDevice):
                     print(f"INFO: Adding Dot1x Config to device: {validDeviceIP}")
                     dot1xConfigOut = sshAccess.send_config_set(dot1xConfig)
                     print(f"INFO: Successfully added Dot1x config to device: {validDeviceIP}")
-                    authLog.info(f"Successfully added Dot1x config to device: {validDeviceIP}")
+                    authLog.info(f"Successfully added Dot1x config to device: {validDeviceIP}, config added:\n{dot1xConfigOut}")
                 
                     print(f"INFO: Taking a \"{shIntStatus}\" for device: {validDeviceIP}")
                     shIntStatusOut = sshAccess.send_command(shIntStatus)
@@ -180,8 +180,9 @@ def dot1x(validIPs, username, netDevice):
                         for interface in shIntStatusOut:
                             interface = interface.strip()
                             print(f"INFO: Checking configuration for interface {interface} on device {validDeviceIP}")
-                            authLog.info(f"Checking configuration for interface {interface} on device {validDeviceIP}")
+                            authLog.info(f"Checking configuration for interface {interface} on device {validDeviceIP}:")
                             interfaceOut = sshAccess.send_command(f'show run int {interface}')
+                            authLog.info(f"{interfaceOut}")
                             interfaceOut = interfaceOut.split('\n')
                             discardInt = False
             
@@ -203,14 +204,14 @@ def dot1x(validIPs, username, netDevice):
                         intAPOut = sshAccess.send_command(f'show run int {intAP}')
                         if "2256" in intAPOut:
                             print(f"INFO: Configuring interface {intAP} with Dot1x - Access Point")
-                            authLog.info(f"String 2256 was found under \"show run int {intAP}\"")
+                            authLog.info(f"String 2256 was found under \"show run int {intAP}\" for device {validDeviceIP}")
                             intConfigAP[0] = f'int {intAP}'
                             intConfigAPOut = sshAccess.send_config_set(intConfigAP)
                             authLog.info(f"Applied the below configuration to interface {intAP} on device {validDeviceIP}\n{intConfigAPOut}")
                             intConfigAPList.append(intConfigAPOut)
                         else:
                             print(f"INFO: Configuring interface {intAP} with Dot1x - Access Port")
-                            authLog.info(f"String 2256 was NOT found under \"show run int {intAP}\"")
+                            authLog.info(f"String 2256 was NOT found under \"show run int {intAP}\" for device {validDeviceIP}")
                             intConfigHosts[0] = f'int {intAP}'
                             intConfigHostsOut = sshAccess.send_config_set(intConfigHosts)
                             authLog.info(f"Applied the below configuration to interface {intAP} on device {validDeviceIP}\n{intConfigHostsOut}")
@@ -218,7 +219,7 @@ def dot1x(validIPs, username, netDevice):
                             intHostsOut.append(intAP)
 
                     showAccessVlanOut = sshAccess.send_command(f'show run int {intHostsOut[0]} | include switchport access vlan')
-                    authLog.info(f"Automation ran the command \"show run int {intHostsOut[0]} | include switchport access vlan\"")
+                    authLog.info(f"Automation ran the command \"show run int {intHostsOut[0]} | include switchport access vlan\" for device {validDeviceIP}")
                     showAccessVlanOut = showAccessVlanOut.replace('switchport access vlan', '')
                     showAccessVlanOut = showAccessVlanOut.strip()
                     authLog.info(f"Found the following data VLAN: {showAccessVlanOut} on device {validDeviceIP}")
