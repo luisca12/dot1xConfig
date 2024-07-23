@@ -22,7 +22,7 @@ def validateIP(deviceIP):
         return True
     except (socket.error, AttributeError):
         try:
-            # deviceIP = f'{deviceIP}.mgmt.internal.das'
+            deviceIP = f'{deviceIP}.mgmt.internal.das'
             deviceIP = f'{deviceIP}'
             socket.gethostbyname(deviceIP)
             authLog.info(f"Hostname successfully validated: {deviceIP}")
@@ -41,7 +41,7 @@ def checkReachPort22(ip):
         if ip.count('.') == 3:  # Check if the input is an IP address
             ip = ip
         else:  # Assume it's a hostname and append the domain
-            # ip = f"{ip}.mgmt.internal.das"
+            ip = f"{ip}.mgmt.internal.das"
             pass
         connTest = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connTest.settimeout(3)
