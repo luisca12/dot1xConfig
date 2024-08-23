@@ -14,61 +14,73 @@ def checkIsDigit(input_str):
     except Exception as error:
         authLog.error(f"Invalid option chosen: {input_str}, error: {error}")
         authLog.error(traceback.format_exc())
-                
-def validateIP(deviceIP):
-    try:
-        socket.inet_aton(deviceIP)
-        authLog.info(f"IP successfully validated: {deviceIP}")
-        return True
-    except (socket.error, AttributeError):
-        try:
-            # deviceIP = f'{deviceIP}.mgmt.internal.das'
-            deviceIP = f'{deviceIP}'
-            socket.gethostbyname(deviceIP)
-            authLog.info(f"Hostname successfully validated: {deviceIP}")
-            return True
-        except (socket.gaierror, AttributeError):
-            authLog.error(f"Not a valid IP address or hostname: {deviceIP}")
-            invalidIPLog.error(f"Invalid IP address or hostname: {deviceIP}")
-            # Append the invalid IP address or hostname to a CSV file
-            with open('invalidDestinations.csv', mode='a', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow([deviceIP])
-            return False
-        
-def checkReachPort22(ip):
-    try:
-        if ip.count('.') == 3:  # Check if the input is an IP address
-            ip = ip
-        else:  # Assume it's a hostname and append the domain
-            # ip = f"{ip}.mgmt.internal.das"
-            pass
-        connTest = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        connTest.settimeout(3)
-        connResult = connTest.connect_ex((ip, 22))
-        if connResult == 0:
-            print(f"Device {ip} is reachable on port TCP 22.")
-            authLog.info(f"Device {ip} is reachable on port TCP 22.")
-            return ip
-        else:
-            print(f"Device {ip} is not reachable on port TCP 22, will be skipped.")
-            authLog.error(f"Device IP: {ip}, is not reachable on port TCP 22.")
-            authLog.debug(traceback.format_exc())
 
-    except Exception as error:
-        print("Error occurred while checking device reachability:", error,"\n")
-        authLog.error(f"Error occurred while checking device reachability for IP {ip}: {error}")
-        authLog.debug(traceback.format_exc())
+def validateIP(deviceIP):
+    hostnamesResolution = [
+        f'{deviceIP}.mgmt.internal.das',
+        f'{deviceIP}.cm.mgmt.internal.das'
+    ]
+        
+    def checkConnect22(ipAddress, port=22, timeout=3):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as connectTest:
+                connectTest.settimeout(timeout)
+                connectTestOut = connectTest.connect_ex((ipAddress, port))
+                return connectTestOut == 0
+        except socket.error as error:
+            authLog.error(f"Device {ipAddress} is not reachable on port TCP 22.")
+            authLog.error(f"Error:{error}\n", traceback.format_exc())
+            return False
+
+    def validIP(ip):
+        try:
+            socket.inet_aton(ip)
+            authLog.info(f"IP successfully validated: {deviceIP}")
+            return True
+        except socket.error:
+            authLog.error(f"IP: {ip} is not an IP Address, will attempt to resolve hostname.")
+            return False
+
+    def resolveHostname(hostname):
+        try:
+            hostnameOut = socket.gethostbyname(hostname)
+            authLog.info(f"Hostname successfully validated: {hostname}")
+            return hostnameOut
+        except socket.gaierror:
+            authLog.error(f"Was not posible to resolve hostname: {hostname}")
+            return None
+
+    if validIP(deviceIP):
+        if checkConnect22(deviceIP):
+            authLog.info(f"Device IP {deviceIP} is reachable on Port TCP 22.")
+            print(f"INFO: Device IP {deviceIP} is reachable on Port TCP 22.")
+            return deviceIP
+
+    for hostname in hostnamesResolution:
+        resolvedIP = resolveHostname(hostname)
+        if resolvedIP and checkConnect22(resolvedIP):
+            authLog.info(f"Device IP {hostname} is reachable on Port TCP 22.")
+            print(f"INFO: Device IP {hostname} is reachable on Port TCP 22.")
+            return hostname    
+
+    hostnameStr = ', '.join(hostnamesResolution)  
     
-    finally:
-        connTest.close()
+    authLog.error(f"Not a valid IP address or hostname: {hostnameStr}")
+    authLog.error(traceback.format_exc())
+    print(f"ERROR: Invalid IP address or hostname: {hostnameStr}")
+
+    with open('invalidDestinations.csv', mode='a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([hostnameStr])
+    
+    return None
 
 def requestLogin(validIPs):
     while True:
         try:
             username = input("Please enter your username: ")
             password = getpass.getpass("Please enter your password: ")
-            execPrivPassword = getpass.getpass("Please input your enable password: ")
+            # execPrivPassword = getpass.getpass("Please input your enable password: ")
 
             for deviceIP in validIPs:
                 netDevice = {
@@ -76,7 +88,7 @@ def requestLogin(validIPs):
                     'ip': deviceIP,
                     'username': username,
                     'password': password,
-                    'secret': execPrivPassword
+                    'secret': password
                 }
                 # print(f"This is netDevice: {netDevice}\n")
                 # print(f"This is deviceIP: {deviceIP}\n")
@@ -105,27 +117,5 @@ def requestLogin(validIPs):
             authLog.error(f"Remote device unreachable - remote device IP: {deviceIP}, Username: {username}")
             authLog.debug(traceback.format_exc())
 
-def delStringFromFile(filePath, stringToDel):
-    with open(filePath, "r") as file:
-        file_content = file.read()
-
-    updated_content = file_content.replace(stringToDel, "")
-
-    with open(filePath, "w") as file:
-        file.write(updated_content)
-
 def checkYNInput(stringInput):
     return stringInput.lower() == 'y' or stringInput.lower() == 'n'
-
-def readIPfromCSV(csvFile):
-    try:
-        with open(csvFile, "r") as deviceFile:
-            csvReader = csv.reader(deviceFile)
-            for row in csvReader:
-                for ip in row:
-                    ip = ip.strip()
-                    ip = ip + ".mgmt.internal.das"
-    except Exception as error:
-        print("Error occurred while checking device reachability:", error,"\n")
-        authLog.error(f"Error occurred while checking device reachability for IP {ip}: {error}")
-        authLog.debug(traceback.format_exc())

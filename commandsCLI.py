@@ -7,6 +7,7 @@ import os
 
 shIntStatus = "show interface status"
 shHostname = "show run | i hostname"
+shIntSDW = "show int des | inc sdw|SDW"
 interface = ''
 
 intList = []
@@ -19,7 +20,7 @@ intConfigHostsstr = ""
 
 
 intPatt = r'[a-zA-Z]+\d+\/(?:\d+\/)*\d+'
-discardPatt = re.compile(r'(ip address \d+\.\d+\.\d+\.\d+)|(no switchport)|(switchport mode (?!access))|(switchport access vlan (1001|1101|1103))|(shutdown)|(vrf forward)')
+discardPatt = re.compile(r'(ip address \d+\.\d+\.\d+\.\d+)|(no switchport)|(switchport mode (?!access))|(switchport access vlan (1001|1101|1103|1193))|(shutdown)|(vrf forward)')
 
 intConfigAP = [
     f'int {interface}',
@@ -90,6 +91,12 @@ dot1xConfig = [
     'server name ISE-Server-VA',
     'server name ISE-Server-MO',
     'ip radius source-interface Loopback0'
+    # 'dot1x system-auth-control'
+]
+
+sdwServerConfigRmv = [
+    f'int {interface}',
+    'no ip access-group ACL-DEFAULT in'
 ]
 
 def dot1x(validIPs, username, netDevice):
@@ -116,8 +123,7 @@ def dot1x(validIPs, username, netDevice):
                 sshAccess.enable()
                 shHostnameOut = sshAccess.send_command(shHostname)
                 authLog.info(f"User {username} successfully found the hostname {shHostnameOut}")
-                shHostnameOut = shHostnameOut.replace('hostname', '')
-                shHostnameOut = shHostnameOut.strip()
+                shHostnameOut = shHostnameOut.split(' ')[1]
                 shHostnameOut = shHostnameOut + "#"
 
                 try:
@@ -192,6 +198,21 @@ def dot1x(validIPs, username, netDevice):
                                     f"{authVlanOut}")
                         print(f"INFO: Confiogured {interfaceList} on device {validDeviceIP} with the below command:\n{authVlanOut}")
                         authVlanList.append(authVlanOut)
+
+                    # Below it is going to remove the access-list from SDW ports
+                    
+                    # print(f"INFO: Taking a \"{shIntSDW}\" for device: {validDeviceIP}")
+                    # shIntSDWOut = sshAccess.send_command(shIntSDW)
+                    # authLog.info(f"Automation successfully ran the command: {shIntSDW}")
+                    # shIntSDWOut1 = re.findall(intPatt, shIntSDWOut)
+
+                    # for interface in shIntSDWOut1:
+                    #     sdwServerConfigRmv[0] - f'int {interface}'
+                    #     sdwServerConfigRmvOut = sshAccess.send_config_set(sdwServerConfigRmv)
+                    #     authLog.info(f"Successfully configured the interface {interface} on device {validDeviceIP} with the below command:\n"
+                    #                 f"{sdwServerConfigRmv}")
+                    #     print(f"INFO: Confiogured {interface} on device {validDeviceIP} with the below command:\n{sdwServerConfigRmv}")
+                    #     authVlanList.append(sdwServerConfigRmv)
                     
                     writeMemOut = sshAccess.send_command('write')
                     print(f"INFO: Running configuration saved for device {validDeviceIP}")

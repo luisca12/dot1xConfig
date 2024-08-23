@@ -35,21 +35,17 @@ def Auth():
                     for row in csvReader:
                         for ip in row:
                             ip = ip.strip()
-                            if validateIP(ip):
-                                authLog.info(f"Valid IP address found: {ip} in file: {csvFile}")
-                                print(f"INFO: {ip} succesfully validated.")
-                                IPreachChecked = checkReachPort22(ip) # NEED TO REVERT
-                                validIPs.append(IPreachChecked) # Append IPreachChecked
+                            authLog.info(f"IP address found: {ip} in file: {csvFile}")
+                            ipOut = validateIP(ip)
+                            if ipOut is not None:
+                                validIPs.append(ipOut)
                             else:
-                                print(f"INFO: Invalid IP address format: {ip}, will be skipped.\n")
-                                authLog.error(f"Invalid IP address found: {ip} in file: {csvFile}")
+                                authLog.info(f"IP address {ip} is invalid or unreachable.")
                     if not validIPs:
                         print(f"No valid IP addresses found in the file path: {csvFile}\n")
                         authLog.error(f"No valid IP addresses found in the file path: {csvFile}")
-                        authLog.error(traceback.format_exc())
-                        continue
                     else:
-                        break  
+                        break
             except FileNotFoundError:
                 print("File not found. Please check the file path and try again.")
                 authLog.error(f"File not found in path {csvFile}")
@@ -69,13 +65,11 @@ def Auth():
 
             for ip in deviceIPsList:
                 ip = ip.strip()
-                if validateIP(ip):
-                    IPreachChecked = checkReachPort22(ip)
-                    validIPs.append(IPreachChecked)
+                ipOut = validateIP(ip)
+                if ipOut is not None:
+                    validIPs.append(ipOut)
                 else:
-                    print(f"Invalid IP address format: {ip}, will be skipped.")
-                    authLog.error(f"User {username} input the following invalid IP: {ip}")
-                    authLog.debug(traceback.format_exc())
+                    authLog.info(f"IP address {ip} is invalid or unreachable.")
             if validIPs:
                 break
         validIPs, username, netDevice = requestLogin(validIPs)

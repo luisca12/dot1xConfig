@@ -28,5 +28,3 @@ def shRunString(validIPs):
         print(f'> Taking a show run of the device {validIPs} <')
         print('>\t   Please wait until it finishes\t  <')
         print('  ------------------------------------------------- ')
-
-menuString("test", "test")
