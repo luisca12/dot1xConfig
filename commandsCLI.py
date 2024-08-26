@@ -66,6 +66,7 @@ intConfigHosts = [
 dot1xConfig = [
     'ip access-list extended ACL-DEFAULT',
     'permit ip any any',
+    'aaa authentication dot1x default group ISE_SERVERS',
     'aaa authorization network default group ISE_SERVERS', 
     'aaa accounting auth-proxy default start-stop group ISE_SERVERS',
     'aaa accounting dot1x default start-stop group ISE_SERVERS',
@@ -91,7 +92,9 @@ dot1xConfig = [
     'aaa group server radius ISE_SERVERS',
     'server name ISE-Server-VA',
     'server name ISE-Server-MO',
-    'ip radius source-interface Loopback0'
+    'exit',
+    'ip radius source-interface Loopback0',
+    'dot1x system-auth-control'
 ]
 
 def dot1x(validIPs, username, netDevice):
