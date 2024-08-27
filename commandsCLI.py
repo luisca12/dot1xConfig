@@ -186,41 +186,26 @@ def dot1x(validIPs, username, netDevice):
                         intConfigHostsList.append(intConfigHostsOut)
                         intHostsOut.append(intAP)
 
-                showAccessVlanOut = sshAccess.send_command(f'show run int {intHostsOut[0]} | include switchport access vlan')
-                authLog.info(f"Automation ran the command \"show run int {intHostsOut[0]} | include switchport access vlan\" for device {validDeviceIP}")
-                showAccessVlanOut = showAccessVlanOut.replace('switchport access vlan', '')
-                showAccessVlanOut = showAccessVlanOut.strip()
-                authLog.info(f"Found the following data VLAN: {showAccessVlanOut} on device {validDeviceIP}")
-                print(f"INFO: Found the following data VLAN: {showAccessVlanOut} on device {validDeviceIP}")
-
-                authVlan = [
-                    f'int {interface}',
-                    f'authentication event server dead action authorize vlan {showAccessVlanOut}',
-                    f'device-tracking attach-policy DEVTRK'
-                ]
-
                 for interfaceList in intList:
-                    authVlan[0] = f'int {interfaceList}'
+                    showAccessVlanOut = sshAccess.send_command(f'show run int {interfaceList} | include switchport access vlan')
+                    authLog.info(f"Automation ran the command \"show run int {interfaceList} | include switchport access vlan\" for device {validDeviceIP}")
+                    showAccessVlanOut = showAccessVlanOut.replace('switchport access vlan', '')
+                    showAccessVlanOut = showAccessVlanOut.strip()
+
+                    authLog.info(f"Found the following data VLAN: {showAccessVlanOut} on device {validDeviceIP}")
+                    print(f"INFO: Found the following data VLAN: {showAccessVlanOut} on device {validDeviceIP}")
+
+                    authVlan = [
+                        f'int {interfaceList}',
+                        f'authentication event server dead action authorize vlan {showAccessVlanOut}',
+                        f'device-tracking attach-policy DEVTRK'
+                    ]
+
                     authVlanOut = sshAccess.send_config_set(authVlan)
                     authLog.info(f"Successfully configured the interface {interfaceList} on device {validDeviceIP} with the below command:\n"
                                 f"{authVlanOut}")
-                    print(f"INFO: Confiogured {interfaceList} on device {validDeviceIP} with the below command:\n{authVlanOut}")
+                    print(f"INFO: Configured {interfaceList} on device {validDeviceIP} with the below command:\n{authVlanOut}")
                     authVlanList.append(authVlanOut)
-
-                # Below it is going to remove the access-list from SDW ports
-                
-                # print(f"INFO: Taking a \"{shIntSDW}\" for device: {validDeviceIP}")
-                # shIntSDWOut = sshAccess.send_command(shIntSDW)
-                # authLog.info(f"Automation successfully ran the command: {shIntSDW}")
-                # shIntSDWOut1 = re.findall(intPatt, shIntSDWOut)
-
-                # for interface in shIntSDWOut1:
-                #     sdwServerConfigRmv[0] - f'int {interface}'
-                #     sdwServerConfigRmvOut = sshAccess.send_config_set(sdwServerConfigRmv)
-                #     authLog.info(f"Successfully configured the interface {interface} on device {validDeviceIP} with the below command:\n"
-                #                 f"{sdwServerConfigRmv}")
-                #     print(f"INFO: Confiogured {interface} on device {validDeviceIP} with the below command:\n{sdwServerConfigRmv}")
-                #     authVlanList.append(sdwServerConfigRmv)
                     
                 writeMemOut = sshAccess.send_command('write')
                 print(f"INFO: Running configuration saved for device {validDeviceIP}")
