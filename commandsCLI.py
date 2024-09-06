@@ -192,8 +192,8 @@ def dot1x(validIPs, username, netDevice):
                     showAccessVlanOut = showAccessVlanOut.replace('switchport access vlan', '')
                     showAccessVlanOut = showAccessVlanOut.strip()
 
-                    authLog.info(f"Found the following data VLAN: {showAccessVlanOut} on device {validDeviceIP}")
-                    print(f"INFO: Found the following data VLAN: {showAccessVlanOut} on device {validDeviceIP}")
+                    authLog.info(f"Found the following data VLAN: {showAccessVlanOut} on interface {interfaceList} for device {validDeviceIP}")
+                    print(f"INFO: Found the following data VLAN: {showAccessVlanOut} on interface {interfaceList} for device {validDeviceIP}")
 
                     authVlan = [
                         f'int {interfaceList}',
