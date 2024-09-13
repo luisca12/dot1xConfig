@@ -11,15 +11,6 @@ shIntSDW = "show int des | inc sdw|SDW"
 interface = ''
 shRun = "show run"
 
-intList = []
-intHostsOut = []
-intConfigAPList = []
-intConfigHostsList = []
-authVlanList = []
-intConfigAPstr = ""
-intConfigHostsstr = ""
-
-
 intPatt = r'[a-zA-Z]+\d+\/(?:\d+\/)*\d+'
 discardPatt = re.compile(r'(ip address \d+\.\d+\.\d+\.\d+)|(no switchport)|(switchport mode (?!access))|(switchport access vlan (1001|1101|1103|1193))|(shutdown)|(vrf forward)')
 
@@ -101,6 +92,14 @@ def dot1x(validIPs, username, netDevice):
     # This function is to take a show run
 
     for validDeviceIP in validIPs:
+        intList = []
+        intHostsOut = []
+        intConfigAPList = []
+        intConfigHostsList = []
+        authVlanList = []
+        intConfigAPstr = ""
+        intConfigHostsstr = ""
+
         try:
             validDeviceIP = validDeviceIP.strip()
             currentNetDevice = {
@@ -168,7 +167,7 @@ def dot1x(validIPs, username, netDevice):
                             print(f"INFO: Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
                             authLog.info(f"Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
                             intList.append(interface)
-                            authLog.info(f"The following interfaces will be modified with Dot1x config:\n{intList}")
+                            authLog.info(f"The following interfaces will be modified with Dot1x config for device {validDeviceIP}:\n{intList}")
 
                 for intAP in intList:
                     intAPOut = sshAccess.send_command(f'show run int {intAP}')
@@ -242,14 +241,13 @@ def dot1x(validIPs, username, netDevice):
                     file.write(f"- Below is the show run of the new configuraiton:\n")
                     file.write(f"{shHostnameOut}{shRun}\n{shRunOutAfter}\n")
                     authLog.info(f"Successfully saved the running config after the Dot1x change for device: {validDeviceIP}")
-       
+                
+            print(f"Outputs and files successfully created for device {validDeviceIP}.\n")
+            print("For any erros or logs please check Logs -> authLog.txt\n")
+
         except Exception as error:
             print(f"ERROR: An error occurred: {error}\n", traceback.format_exc())
             authLog.error(f"User {username} connected to {validDeviceIP} got an error: {error}")
-            authLog.debug(traceback.format_exc(),"\n")
+            authLog.error(traceback.format_exc())
             with open(f"failedDevices.txt","a") as failedDevices:
-                failedDevices.write(f"User {username} connected to {validDeviceIP} got an error.\n")
-        
-        finally:
-            print(f"Outputs and files successfully created for device {validDeviceIP}.\n")
-            print("For any erros or logs please check Logs -> authLog.txt\n")
+                failedDevices.write(f"User {username} connected to {validDeviceIP} got an error: {error}\n")      
