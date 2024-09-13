@@ -131,6 +131,7 @@ def dot1x(validIPs, username, netDevice):
 
                 with open(f"Outputs/{validDeviceIP}_showRun_beforeConfig.txt", "a") as file:
                     file.write(f"User {username} connected to device IP {validDeviceIP}:\n\n")
+                    file.write(f"- Below is the show run before all new configuration:\n")
                     file.write(f"{shHostnameOut}{shRun}\n{shRunOut}\n")
                     authLog.info(f"Successfully saved the running config before the Dot1x change for device: {validDeviceIP}")
 
@@ -171,14 +172,14 @@ def dot1x(validIPs, username, netDevice):
                 for intAP in intList:
                     intAPOut = sshAccess.send_command(f'show run int {intAP}')
                     if "2256" in intAPOut:
-                        print(f"INFO: Configuring interface {intAP} with Dot1x - Access Point")
+                        print(f"INFO: Configuring interface {intAP} on device {validDeviceIP} with Dot1x - Access Point")
                         authLog.info(f"String 2256 was found under \"show run int {intAP}\" for device {validDeviceIP}")
                         intConfigAP[0] = f'int {intAP}'
                         intConfigAPOut = sshAccess.send_config_set(intConfigAP)
                         authLog.info(f"Applied the below configuration to interface {intAP} on device {validDeviceIP}\n{intConfigAPOut}")
                         intConfigAPList.append(intConfigAPOut)
                     else:
-                        print(f"INFO: Configuring interface {intAP} with Dot1x - Access Port")
+                        print(f"INFO: Configuring interface {intAP} on device {validDeviceIP} with Dot1x - Access Port")
                         authLog.info(f"String 2256 was NOT found under \"show run int {intAP}\" for device {validDeviceIP}")
                         intConfigHosts[0] = f'int {intAP}'
                         intConfigHostsOut = sshAccess.send_config_set(intConfigHosts)
@@ -221,12 +222,13 @@ def dot1x(validIPs, username, netDevice):
 
                 with open(f"Outputs/{validDeviceIP}_Dot1x.txt", "a") as file:
                     file.write(f"User {username} connected to device IP {validDeviceIP}, configuration applied:\n\n")
+                    file.write(f"- Below is all the configuration applied:\n")
                     file.write(f"{shHostnameOut}\n{dot1xConfigOut}\n")
-                    file.write(f"\nBelow is the config applied to all ports with Access Points:\n")
+                    file.write(f"\n- Below is the config applied to all ports with Access Points:\n")
                     file.write(f"{shHostnameOut}\n{intConfigAPstr}\n")
-                    file.write(f"\nBelow is the config applied to all ports with Hosts connected:\n")
+                    file.write(f"\n- Below is the config applied to all ports with Hosts connected:\n")
                     file.write(f"{shHostnameOut}\n{intConfigHostsstr}\n")
-                    file.write(f"\nBelow is the config applied to all ports:\n")
+                    file.write(f"\n- Below is the config applied to all ports:\n")
                     file.write(f"{shHostnameOut}\n{authVlanstr}")
                 
                 print(f"INFO: Taking a show run after all the changes for device: {validDeviceIP}")
@@ -236,6 +238,7 @@ def dot1x(validIPs, username, netDevice):
 
                 with open(f"Outputs/{validDeviceIP}_showRun_afterConfig.txt", "a") as file:
                     file.write(f"User {username} connected to device IP {validDeviceIP}:\n\n")
+                    file.write(f"- Below is the show run of the new configuraiton:\n")
                     file.write(f"{shHostnameOut}{shRun}\n{shRunOutAfter}\n")
                     authLog.info(f"Successfully saved the running config after the Dot1x change for device: {validDeviceIP}")
        
