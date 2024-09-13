@@ -144,7 +144,7 @@ def dot1x(validIPs, username, netDevice):
                 shIntStatusOut = sshAccess.send_command(shIntStatus)
                 authLog.info(f"Automation successfully ran the command: {shIntStatus}")
                 shIntStatusOut = re.findall(intPatt, shIntStatusOut)
-                authLog.info(f"The following interfaces were found under the command: {shIntStatus}\n{shIntStatusOut}")
+                authLog.info(f"The following interfaces for device {validDeviceIP} were found under the command: {shIntStatus}\n{shIntStatusOut}")
                 if shIntStatusOut:
                     for interface in shIntStatusOut:
                         interface = interface.strip()
@@ -168,6 +168,7 @@ def dot1x(validIPs, username, netDevice):
                             print(f"INFO: Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
                             authLog.info(f"Interface {interface} will be modified with Dot1X config on device: {validDeviceIP}")
                             intList.append(interface)
+                            authLog.info(f"The following interfaces will be modified with Dot1x config:\n{intList}")
 
                 for intAP in intList:
                     intAPOut = sshAccess.send_command(f'show run int {intAP}')
