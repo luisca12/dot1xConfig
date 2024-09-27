@@ -2,6 +2,7 @@ from netmiko import ConnectHandler
 from log import authLog
 
 import traceback
+import time
 import re
 import os
 
@@ -11,8 +12,13 @@ shIntSDW = "show int des | inc sdw|SDW"
 interface = ''
 shRun = "show run"
 
-intPatt = r'[a-zA-Z]+\d+\/(?:\d+\/)*\d+'
-discardPatt = re.compile(r'(ip address \d+\.\d+\.\d+\.\d+)|(no switchport)|(switchport mode (?!access))|(switchport access vlan (1001|1101|1103|1193))|(shutdown)|(vrf forward)')
+clearSession = "clear authentication sessions"
+
+validationCommands= [
+    'do show vlan br',
+    'do show ip dhcp snooping binding',
+    'do show authentication sessions'
+]
 
 intConfigAP = [
     f'int {interface}',
@@ -53,8 +59,6 @@ intConfigHosts = [
     'dot1x timeout tx-period 10',
     'ip access-group ACL-DEFAULT in'
 ]
-
-
 
 dot1xConfig = [
     'ip access-list extended ACL-DEFAULT',
@@ -141,6 +145,10 @@ dot1xConfig = [
     'dot1x system-auth-control'
 ]
 
+# Regex Patterns
+intPatt = r'[a-zA-Z]+\d+\/(?:\d+\/)*\d+'
+discardPatt = re.compile(r'(ip address \d+\.\d+\.\d+\.\d+)|(no switchport)|(switchport mode (?!access))|(switchport access vlan (1001|1101|1103|1193))|(shutdown)|(vrf forward)')
+
 def dot1x(validIPs, username, netDevice):
     # This function is to take a show run
 
@@ -176,6 +184,9 @@ def dot1x(validIPs, username, netDevice):
                 shHostnameOut = shHostnameOut.split(' ')[1]
                 shHostnameOut = shHostnameOut + "#"
 
+                validationCommandsOut = sshAccess.send_config_set(validationCommands)
+                authLog.info(f"Automation successfully ran the below commands:\n{validationCommandsOut}")
+
                 print(f"INFO: Taking a show run for device: {validDeviceIP}")
                 authLog.info(f"Taking a show run for device: {validDeviceIP}")
                 shRunOut = sshAccess.send_command(shRun)
@@ -183,6 +194,7 @@ def dot1x(validIPs, username, netDevice):
 
                 with open(f"Outputs/{validDeviceIP}_showRun_beforeConfig.txt", "a") as file:
                     file.write(f"User {username} connected to device IP {validDeviceIP}:\n\n")
+                    file.write(f"- Below is the validation:\n{validationCommandsOut}\n\n")
                     file.write(f"- Below is the show run before all new configuration:\n")
                     file.write(f"{shHostnameOut}{shRun}\n{shRunOut}\n")
                     authLog.info(f"Successfully saved the running config before the Dot1x change for device: {validDeviceIP}")
@@ -273,8 +285,17 @@ def dot1x(validIPs, username, netDevice):
                 intConfigHostsstr.split('\n')
                 authVlanstr.split('\n')
 
+                clearSessionOut = sshAccess.send_command(clearSession)
+                authLog.info(f"Successfully cleared the authentication sessions on device {validDeviceIP}, {clearSessionOut}")
+
+                time.sleep(15)
+
+                validationCommandsOut1 = sshAccess.send_config_set(validationCommands)
+                authLog.info(f"Automation successfully ran the below commands:\n{validationCommandsOut}")
+
                 with open(f"Outputs/{validDeviceIP}_Dot1x.txt", "a") as file:
                     file.write(f"User {username} connected to device IP {validDeviceIP}, configuration applied:\n\n")
+                    file.write(f"- Below are the validation commands:\n{validationCommandsOut1}\n\n")
                     file.write(f"- Below is all the configuration applied:\n")
                     file.write(f"{shHostnameOut}\n{dot1xConfigOut}\n")
                     file.write(f"\n- Below is the config applied to all ports with Access Points:\n")
