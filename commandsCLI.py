@@ -137,7 +137,7 @@ dot1xConfig = [
     'device-sensor notify all-changes',
     'device-tracking tracking auto-source',
     'device-tracking policy DEVTRK',
-    'security-level glean,'
+    'security-level glean',
     'tracking enable',
     'no protocol ndp',
     'no protocol dhcp6',
@@ -192,7 +192,7 @@ def dot1x(validIPs, username, netDevice):
                 shRunOut = sshAccess.send_command(shRun)
                 authLog.info(f"Successfully ran the command {shRun} on device: {validDeviceIP}")
 
-                with open(f"Outputs/{validDeviceIP}_showRun_beforeConfig.txt", "a") as file:
+                with open(f"Outputs/Show Run before NAC Config for device {validDeviceIP}.txt", "a") as file:
                     file.write(f"User {username} connected to device IP {validDeviceIP}:\n\n")
                     file.write(f"- Below is the validation:\n{validationCommandsOut}\n\n")
                     file.write(f"- Below is the show run before all new configuration:\n")
@@ -293,7 +293,7 @@ def dot1x(validIPs, username, netDevice):
                 validationCommandsOut1 = sshAccess.send_config_set(validationCommands)
                 authLog.info(f"Automation successfully ran the below commands:\n{validationCommandsOut}")
 
-                with open(f"Outputs/{validDeviceIP}_Dot1x.txt", "a") as file:
+                with open(f"Outputs/NAC Configurations applied to device {validDeviceIP}.txt", "a") as file:
                     file.write(f"User {username} connected to device IP {validDeviceIP}, configuration applied:\n\n")
                     file.write(f"- Below are the validation commands:\n{validationCommandsOut1}\n\n")
                     file.write(f"- Below is all the configuration applied:\n")
@@ -310,7 +310,7 @@ def dot1x(validIPs, username, netDevice):
                 shRunOutAfter = sshAccess.send_command(shRun)
                 authLog.info(f"Successfully ran the command {shRun} on device: {validDeviceIP}")
 
-                with open(f"Outputs/{validDeviceIP}_showRun_afterConfig.txt", "a") as file:
+                with open(f"Outputs/Show Run after NAC config for device {validDeviceIP}", "a") as file:
                     file.write(f"User {username} connected to device IP {validDeviceIP}:\n\n")
                     file.write(f"- Below is the show run of the new configuraiton:\n")
                     file.write(f"{shHostnameOut}{shRun}\n{shRunOutAfter}\n")
@@ -323,5 +323,5 @@ def dot1x(validIPs, username, netDevice):
             print(f"ERROR: An error occurred: {error}\n", traceback.format_exc())
             authLog.error(f"User {username} connected to {validDeviceIP} got an error: {error}")
             authLog.error(traceback.format_exc())
-            with open(f"failedDevices.txt","a") as failedDevices:
+            with open(f"Devices that failed to apply config.txt","a") as failedDevices:
                 failedDevices.write(f"User {username} connected to {validDeviceIP} got an error: {error}\n")      
