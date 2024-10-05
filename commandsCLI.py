@@ -295,7 +295,7 @@ def dot1x(validIPs, username, netDevice):
 
                 with open(f"Outputs/NAC Configurations applied to device {validDeviceIP}.txt", "a") as file:
                     file.write(f"User {username} connected to device IP {validDeviceIP}, configuration applied:\n\n")
-                    file.write(f"- Below are the validation commands:\n{validationCommandsOut1}\n\n")
+                    file.write(f"- Below are the Post validation commands:\n{validationCommandsOut1}\n\n")
                     file.write(f"- Below is all the configuration applied:\n")
                     file.write(f"{shHostnameOut}\n{dot1xConfigOut}\n")
                     file.write(f"\n- Below is the config applied to all ports with Access Points:\n")
@@ -310,7 +310,7 @@ def dot1x(validIPs, username, netDevice):
                 shRunOutAfter = sshAccess.send_command(shRun)
                 authLog.info(f"Successfully ran the command {shRun} on device: {validDeviceIP}")
 
-                with open(f"Outputs/Show Run after NAC config for device {validDeviceIP}", "a") as file:
+                with open(f"Outputs/Show Run after NAC config for device {validDeviceIP}.txt", "a") as file:
                     file.write(f"User {username} connected to device IP {validDeviceIP}:\n\n")
                     file.write(f"- Below is the show run of the new configuraiton:\n")
                     file.write(f"{shHostnameOut}{shRun}\n{shRunOutAfter}\n")
