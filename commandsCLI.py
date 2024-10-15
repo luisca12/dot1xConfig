@@ -2,6 +2,7 @@ from netmiko import ConnectHandler
 from log import authLog
 
 import traceback
+import threading
 import time
 import re
 import os
@@ -152,6 +153,7 @@ discardPatt = re.compile(r'(ip address \d+\.\d+\.\d+\.\d+)|(no switchport)|(swit
 def dot1x(validIPs, username, netDevice):
     # This function is to take a show run
 
+    validIPs = [validIPs]
     for validDeviceIP in validIPs:
         intList = []
         intHostsOut = []
@@ -325,3 +327,16 @@ def dot1x(validIPs, username, netDevice):
             authLog.error(traceback.format_exc())
             with open(f"Devices that failed to apply config.txt","a") as failedDevices:
                 failedDevices.write(f"User {username} connected to {validDeviceIP} got an error: {error}\n")      
+
+def dot1xThread(validIPs, username, netDevice):
+    threads = []
+
+    for validDeviceIP in validIPs:
+        thread = threading.Thread(target=dot1x, args=(validDeviceIP, username, netDevice))
+        thread.start()
+        authLog.info(f"Thread {thread} started.")
+        threads.append(thread)
+        authLog.info(f"Thread {thread} appended to threads: {threads}")
+
+    for thread in threads:
+        thread.join()
